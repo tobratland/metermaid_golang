@@ -12,10 +12,26 @@ message Timeseries {
     map<string, double> values = 7;
 }
 
+message GetAllFromTimeToTimeRequest {
+    string from = 1;
+    string to = 2;
+    string customerId = 3;
+    string meterId = 4;
+}
+
+message GetAllFromTimeToTimeResponse {
+    repeated Timeseries TimeseriesList = 1;
+}
+
 message Error {
     string message = 1;
 }
 
 service timeseriesHandler {
     rpc Store(Timeseries) returns (Timeseries) {}
+    //TODO get all timeseries for a period of time
+    rpc GetAllFromTimeToTime(GetAllFromTimeToTimeRequest) returns (GetAllFromTimeToTimeResponse){}
+    //TODO get total usage for customer for a period of time
+    //TODO get total usage for meter for a period of time
+    
 }
