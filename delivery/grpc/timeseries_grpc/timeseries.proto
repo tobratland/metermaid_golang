@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package timeseries_grpc;
+
+message Timeseries {
+    string id = 1;
+    string meterId = 2;
+    string customerId = 3;
+    string resolution = 4;
+    string from = 5;
+    string to = 6;
+    map<string, double> values = 7;
+}
+
+message Error {
+    string message = 1;
+}
+
+service timeseriesHandler {
+    rpc Store(Timeseries) returns (Timeseries) {}
+}
