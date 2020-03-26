@@ -9,7 +9,7 @@ type TimeseriesRepository struct {
 	mock.Mock
 }
 
-func (_m *TimeseriesRepository) Store(t *models.TimeSeries) error {
+func (_m *TimeseriesRepository) StoreValues(t *models.TimeSeries) error {
 	ret := _m.Called(t)
 
 	var r1 error

@@ -26,7 +26,7 @@ func TestStoreTimeseriesValues(t *testing.T) {
 
 	u := usecase.NewTimeseriesUsecase(mockTimeseriesRepo)
 
-	err = u.Store(&tempMockTimeseries)
+	err = u.StoreValues(&tempMockTimeseries)
 
 	assert.NoError(t, err)
 }

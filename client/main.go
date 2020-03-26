@@ -13,15 +13,19 @@ func main() {
 
 	fmt.Println("Client started...")
 
-	opts := grpc.WithInsecure()
-	cc, err := grpc.Dial("127.0.0.1:8080", opts)
+	conn, err := grpc.Dial("127.0.0.1:8080", grpc.WithInsecure())
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	defer cc.Close()
+	defer conn.Close()
 
-	client := timeseries_grpc.NewTimeseriesHandlerClient(cc)
+	client := timeseries_grpc.NewTimeseriesHandlerClient(conn)
+	store(client)
+
+}
+
+func store(c timeseries_grpc.TimeseriesHandlerClient) {
 	request := &timeseries_grpc.Timeseries{
 		MeterId:    "test123",
 		CustomerId: "tester123",
@@ -30,9 +34,8 @@ func main() {
 		To:         "2018-08-09T23:00:00Z",
 		Values:     createMap(),
 	}
-	fmt.Println(request.Values["2018-08-09T00:00:00Z"])
-	resp, _ := client.Store(context.Background(), request)
-	fmt.Printf("Recieved responsse => [%s]", resp.Id)
+	resp, _ := c.Store(context.Background(), request)
+	fmt.Printf("Recieved responsse => [%s]", resp.CustomerId)
 }
 
 func createMap() map[string]float64 {

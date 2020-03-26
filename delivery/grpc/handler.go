@@ -49,7 +49,10 @@ func (s *server) transformTimeseriesRpc(ts *models.TimeSeries) *timeseries_grpc.
 	if ts == nil {
 		return nil
 	}
-
+	m := make(map[string]float64)
+	for k, v := range ts.Values {
+		m[ParseTimeToString(k)] = v
+	}
 	res := &timeseries_grpc.Timeseries{
 		Id:         ts.Id,
 		MeterId:    ts.MeterId,
@@ -57,6 +60,7 @@ func (s *server) transformTimeseriesRpc(ts *models.TimeSeries) *timeseries_grpc.
 		Resolution: ts.Resolution,
 		From:       ParseTimeToString(ts.From),
 		To:         ParseTimeToString(ts.To),
+		Values:     m,
 	}
 	return res
 }
@@ -70,6 +74,23 @@ func (s *server) Store(ctx context.Context, t *timeseries_grpc.Timeseries) (*tim
 	}
 
 	return t, nil
+}
+
+func (s *server) GetAllFromTimeToTime(ctx context.Context, r *timeseries_grpc.GetAllFromTimeToTimeRequest) (*timeseries_grpc.GetAllFromTimeToTimeResponse, error) {
+	tss, err := s.usecase.GetAllTimeseriesFromTimeToTime(ParseStringToTime(r.From), ParseStringToTime(r.To))
+	res := make([]*timeseries_grpc.Timeseries, len(tss))
+	if err != nil {
+		log.Println(err.Error())
+		return nil, err
+	}
+	for i, t := range tss {
+		ts := s.transformTimeseriesRpc(&t)
+		res[i] = ts
+	}
+	response := &timeseries_grpc.GetAllFromTimeToTimeResponse{
+		TimeseriesList: res,
+	}
+	return response, nil
 }
 
 func ParseStringToTime(timeString string) time.Time {

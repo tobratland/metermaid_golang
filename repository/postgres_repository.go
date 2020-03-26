@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
@@ -18,30 +19,34 @@ type postgresTimeseriesRepository struct {
 func NewPostgresTimeSeriesRepository(Conn *sql.DB) TimeSeriesRepository {
 	return &postgresTimeseriesRepository{Conn}
 }
-
-/* func (p *postgresTimeseriesRepository) Store(t *models.TimeSeries) (string, error) {
-	query := `INSERT INTO timeseries(id, meterid, customerid, resolution, fromtime, totime) VALUES($1,$2,$3,$4,$5,$6) RETURNING id`
-	stmt, err := p.Conn.Prepare(query)
+func (p *postgresTimeseriesRepository) StoreData(t *models.TimeSeries) error {
+	txn, err := p.Conn.Begin()
 	if err != nil {
 		log.Fatal(err)
-		return "", models.INTERNAL_SERVER_ERROR
+		fmt.Println("conn.begin @ storedata")
 	}
-	var id string
-	err = stmt.QueryRow(t.Id, t.MeterId, t.CustomerId, t.Resolution, t.From, t.To).Scan(&id)
+
+	statement := "INSERT INTO meterdata (id, meterid, userid, resolution, fromtime, totime) VALUES ($1, $2, $3, $4, $5, $6) returning id"
+	_, err = txn.Exec(statement, t.Id, t.MeterId, t.CustomerId, t.Resolution, t.From, t.To)
+	if err != nil {
+		fmt.Println("query @ storedata")
+		log.Fatal(err)
+		return err
+	}
+
+	err = txn.Commit()
 	if err != nil {
 		log.Fatal(err)
-		return "", models.INTERNAL_SERVER_ERROR
 	}
-	return id, nil
+	fmt.Println("successfully stored data")
+	return nil
+}
 
-} */
-
-func (p *postgresTimeseriesRepository) Store(t *models.TimeSeries) error {
+func (p *postgresTimeseriesRepository) StoreValues(t *models.TimeSeries) error {
 	txn, err := p.Conn.Begin()
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	stmt, err := txn.Prepare(pq.CopyIn("metervalues", "id", "meterdataid", "meterid", "userid", "hour", "value"))
 	if err != nil {
 		log.Fatal(err)
@@ -69,8 +74,33 @@ func (p *postgresTimeseriesRepository) Store(t *models.TimeSeries) error {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("successfully stored")
+	fmt.Println("successfully stored values")
 	return nil
+}
+
+func (p *postgresTimeseriesRepository) GetAllTimeseriesFromTimeToTime(from time.Time, to time.Time) (timeseries []models.TimeSeries, err error) {
+	/* txn, err := p.Conn.Begin()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer p.Conn.Close()
+	statement := "SELECT * FROM metervalues WHERE hour >=$1 AND hour <= $2"
+	rows, err := txn.Query(statement, from, to)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var timeseries models.TimeSeries
+
+		if err := rows.Scan(&timeseries.Id, &timeseries.); err != nil {
+			log.Fatal(err)
+		}
+	} */
+
+	return
 }
 
 /* Id           string
