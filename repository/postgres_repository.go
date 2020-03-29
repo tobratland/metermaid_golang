@@ -51,13 +51,11 @@ func (p *postgresTimeseriesRepository) StoreValues(t *models.TimeSeries) error {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(len(t.Values))
 	for key := range t.Values {
 		_, err = stmt.Exec(uuid.New().String(), t.Id, t.MeterId, t.CustomerId, key, t.Values[key])
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Println(key, " ", t.Values[key])
 	}
 
 	_, err = stmt.Exec()
@@ -78,14 +76,13 @@ func (p *postgresTimeseriesRepository) StoreValues(t *models.TimeSeries) error {
 	return nil
 }
 
-func (p *postgresTimeseriesRepository) GetAllTimeseriesFromTimeToTime(from time.Time, to time.Time) (timeseries []models.TimeSeries, err error) {
-	/* txn, err := p.Conn.Begin()
+func (p *postgresTimeseriesRepository) GetAllDataFromTimeToTime(from time.Time, to time.Time) (timeseries []models.TimeSeries, err error) {
+	txn, err := p.Conn.Begin()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	defer p.Conn.Close()
-	statement := "SELECT * FROM metervalues WHERE hour >=$1 AND hour <= $2"
+	statement := "SELECT * FROM meterdata WHERE fromtime >=$1 AND totime <= $2"
 	rows, err := txn.Query(statement, from, to)
 	if err != nil {
 		log.Fatal(err)
@@ -93,15 +90,55 @@ func (p *postgresTimeseriesRepository) GetAllTimeseriesFromTimeToTime(from time.
 	defer rows.Close()
 
 	for rows.Next() {
-		var timeseries models.TimeSeries
+		var tempTs models.TimeSeries
 
-		if err := rows.Scan(&timeseries.Id, &timeseries.); err != nil {
+		if err := rows.Scan(&tempTs.Id, &tempTs.MeterId, &tempTs.CustomerId, &tempTs.Resolution, &tempTs.From, &tempTs.To); err != nil {
 			log.Fatal(err)
 		}
-	} */
+		timeseries = append(timeseries, tempTs)
+	}
 
-	return
+	return timeseries, nil
 }
+
+func (p *postgresTimeseriesRepository) GetValuesByTimeseries(t *models.TimeSeries) (*models.TimeSeries, error) {
+	txn, err := p.Conn.Begin()
+	if err != nil {
+		log.Fatal(err)
+	}
+	statement := "SELECT hour, value FROM metervalues WHERE meterdataid = $1"
+	rows, err := txn.Query(statement, t.Id)
+	defer rows.Close()
+
+	var hour time.Time
+	var value float64
+	m := make(map[time.Time]float64)
+	for rows.Next() {
+		rows.Scan(&hour, &value)
+		m[hour] = value
+	}
+	t.Values = m
+
+	return t, nil
+}
+
+/*
+var u1, u2, u3, u4 string
+
+	var ht time.Time
+	var v float64
+	var ts = models.TimeSeries{
+		Id:         t.Id,
+		MeterId:    t.MeterId,
+		CustomerId: t.CustomerId,
+		Resolution: t.Resolution,
+		From:       t.From,
+		To:         t.To,
+		Values:     make(map[time.Time]float64),
+	}
+*/
+
+//"id", "meterdataid", "meterid", "userid", "hour", "value"
 
 /* Id           string
 TimeSeriesId string
@@ -110,3 +147,11 @@ CustomerId   string
 Hour         time.Time
 Value        float32 */
 //insert into meterdata(id, meterid, userid, resolution, fromtime, totime) values(?,?,?,?,?,?)
+func ParseStringToTime(timeString string) time.Time {
+	layout := "2006-01-02T15:04:05Z"
+	t, err := time.Parse(layout, timeString)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return t
+}

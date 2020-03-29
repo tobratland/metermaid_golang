@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/tobra/metermaid/delivery/grpc/timeseries_grpc"
 	"github.com/tobra/metermaid/models"
 	_usecase "github.com/tobra/metermaid/usecase"
@@ -29,16 +30,33 @@ type server struct {
 
 func (s *server) transformTimeseriesData(ts *timeseries_grpc.Timeseries) *models.TimeSeries {
 	m := make(map[time.Time]float64)
-	for k, v := range ts.Values {
-		m[ParseStringToTime(k)] = v
+	for _, v := range ts.Values {
+
+		fromParsed, err := ptypes.Timestamp(v.Hour)
+		if err != nil {
+			fmt.Println(err)
+			return nil
+		}
+		m[fromParsed] = v.Value
+	}
+	fromParsed, err := ptypes.Timestamp(ts.From)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	toParsed, err := ptypes.Timestamp(ts.To)
+	if err != nil {
+		fmt.Println(err)
+		return nil
 	}
 
 	res := &models.TimeSeries{
 		MeterId:    ts.MeterId,
 		CustomerId: ts.CustomerId,
 		Resolution: ts.Resolution,
-		From:       ParseStringToTime(ts.From),
-		To:         ParseStringToTime(ts.To),
+		From:       fromParsed,
+		To:         toParsed,
 		Values:     m,
 	}
 
@@ -49,18 +67,37 @@ func (s *server) transformTimeseriesRpc(ts *models.TimeSeries) *timeseries_grpc.
 	if ts == nil {
 		return nil
 	}
-	m := make(map[string]float64)
-	for k, v := range ts.Values {
-		m[ParseTimeToString(k)] = v
+
+	fromParsed, err := ptypes.TimestampProto(ts.From)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	toParsed, err := ptypes.TimestampProto(ts.To)
+	if err != nil {
+		fmt.Println(err)
+		return nil
 	}
 	res := &timeseries_grpc.Timeseries{
 		Id:         ts.Id,
 		MeterId:    ts.MeterId,
 		CustomerId: ts.CustomerId,
 		Resolution: ts.Resolution,
-		From:       ParseTimeToString(ts.From),
-		To:         ParseTimeToString(ts.To),
-		Values:     m,
+		From:       fromParsed,
+		To:         toParsed,
+	}
+
+	for k, v := range ts.Values {
+		kParsed, err := ptypes.TimestampProto(k)
+		if err != nil {
+			fmt.Println(err)
+			return nil
+		}
+		res.Values = append(res.Values, &timeseries_grpc.Value{
+			Hour:  kParsed,
+			Value: v,
+		})
+
 	}
 	return res
 }
@@ -77,12 +114,25 @@ func (s *server) Store(ctx context.Context, t *timeseries_grpc.Timeseries) (*tim
 }
 
 func (s *server) GetAllFromTimeToTime(ctx context.Context, r *timeseries_grpc.GetAllFromTimeToTimeRequest) (*timeseries_grpc.GetAllFromTimeToTimeResponse, error) {
-	tss, err := s.usecase.GetAllTimeseriesFromTimeToTime(ParseStringToTime(r.From), ParseStringToTime(r.To))
-	res := make([]*timeseries_grpc.Timeseries, len(tss))
+
+	toParsed, err := ptypes.Timestamp(r.To)
+	if err != nil {
+		fmt.Println(err)
+		return nil, nil
+	}
+	fromParsed, err := ptypes.Timestamp(r.From)
+	if err != nil {
+		fmt.Println(err)
+		return nil, nil
+	}
+
+	tss, err := s.usecase.GetAllTimeseriesFromTimeToTime(fromParsed, toParsed)
 	if err != nil {
 		log.Println(err.Error())
 		return nil, err
 	}
+	res := make([]*timeseries_grpc.Timeseries, len(tss))
+
 	for i, t := range tss {
 		ts := s.transformTimeseriesRpc(&t)
 		res[i] = ts
@@ -91,19 +141,4 @@ func (s *server) GetAllFromTimeToTime(ctx context.Context, r *timeseries_grpc.Ge
 		TimeseriesList: res,
 	}
 	return response, nil
-}
-
-func ParseStringToTime(timeString string) time.Time {
-	layout := "2006-01-02T15:04:05Z"
-	t, err := time.Parse(layout, timeString)
-	if err != nil {
-		fmt.Println(err)
-	}
-	return t
-}
-
-func ParseTimeToString(t time.Time) string {
-	layout := "2006-01-02T15:04:05Z"
-	ts := t.Format(layout)
-	return ts
 }

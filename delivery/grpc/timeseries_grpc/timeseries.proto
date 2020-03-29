@@ -2,19 +2,26 @@ syntax = "proto3";
 
 package timeseries_grpc;
 
+import "google/protobuf/timestamp.proto";
+
+message Value {
+    google.protobuf.Timestamp hour = 1;
+    double value = 2;
+}
+
 message Timeseries {
     string id = 1;
     string meterId = 2;
     string customerId = 3;
     string resolution = 4;
-    string from = 5;
-    string to = 6;
-    map<string, double> values = 7;
+    google.protobuf.Timestamp from = 5;
+    google.protobuf.Timestamp to = 6;
+    repeated Value values = 7;
 }
 
 message GetAllFromTimeToTimeRequest {
-    string from = 1;
-    string to = 2;
+    google.protobuf.Timestamp from = 1;
+    google.protobuf.Timestamp to = 2;
     string customerId = 3;
     string meterId = 4;
 }

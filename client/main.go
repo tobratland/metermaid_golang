@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/tobra/metermaid/delivery/grpc/timeseries_grpc"
 	"google.golang.org/grpc"
 )
@@ -21,51 +23,84 @@ func main() {
 	defer conn.Close()
 
 	client := timeseries_grpc.NewTimeseriesHandlerClient(conn)
-	store(client)
+	//store(client)
+	getdata(client)
 
+}
+func getdata(c timeseries_grpc.TimeseriesHandlerClient) {
+	from, err := ptypes.TimestampProto(parseStringToTime("2018-08-05T00:00:00Z"))
+	if err != nil {
+		fmt.Println(err)
+	}
+	to, err := ptypes.TimestampProto(parseStringToTime("2018-08-20T23:00:00Z"))
+	if err != nil {
+		fmt.Println(err)
+	}
+	request := &timeseries_grpc.GetAllFromTimeToTimeRequest{
+		From: from,
+		To:   to,
+	}
+
+	resp, _ := c.GetAllFromTimeToTime(context.Background(), request)
+	fmt.Println(len(resp.GetTimeseriesList()))
+	for _, elem := range resp.GetTimeseriesList() {
+		for _, value := range elem.Values {
+			hour, err := ptypes.Timestamp(value.Hour)
+			if err != nil {
+				fmt.Println(err)
+			}
+			fmt.Println(hour, ": ", value.Value)
+		}
+	}
 }
 
 func store(c timeseries_grpc.TimeseriesHandlerClient) {
+	fromParsed, err := ptypes.TimestampProto(parseStringToTime("2018-08-09T00:00:00Z"))
+	if err != nil {
+		fmt.Println(err)
+	}
+	toParsed, err := ptypes.TimestampProto(parseStringToTime("2018-08-09T23:00:00Z"))
+	if err != nil {
+		fmt.Println(err)
+	}
 	request := &timeseries_grpc.Timeseries{
 		MeterId:    "test123",
 		CustomerId: "tester123",
 		Resolution: "hour",
-		From:       "2018-08-09T00:00:00Z",
-		To:         "2018-08-09T23:00:00Z",
-		Values:     createMap(),
+		From:       fromParsed,
+		To:         toParsed,
 	}
-	resp, _ := c.Store(context.Background(), request)
+
+	req := addvalues(*request)
+
+	resp, _ := c.Store(context.Background(), &req)
 	fmt.Printf("Recieved responsse => [%s]", resp.CustomerId)
 }
 
-func createMap() map[string]float64 {
-	m := map[string]float64{
-		"2018-08-09T00:00:00Z": 12.3,
-		"2018-08-09T01:00:00Z": 12.3,
-		"2018-08-09T02:00:00Z": 12.3,
-		"2018-08-09T03:00:00Z": 12.3,
-		"2018-08-09T04:00:00Z": 12.3,
-		"2018-08-09T05:00:00Z": 12.3,
-		"2018-08-09T06:00:00Z": 12.3,
-		"2018-08-09T07:00:00Z": 12.3,
-		"2018-08-09T08:00:00Z": 12.3,
-		"2018-08-09T09:00:00Z": 12.3,
-		"2018-08-09T10:00:00Z": 12.3,
-		"2018-08-09T11:00:00Z": 12.3,
-		"2018-08-09T12:00:00Z": 12.3,
-		"2018-08-09T13:00:00Z": 12.3,
-		"2018-08-09T14:00:00Z": 12.3,
-		"2018-08-09T15:00:00Z": 12.3,
-		"2018-08-09T16:00:00Z": 12.3,
-		"2018-08-09T17:00:00Z": 12.3,
-		"2018-08-09T18:00:00Z": 12.3,
-		"2018-08-09T19:00:00Z": 12.3,
-		"2018-08-09T20:00:00Z": 12.3,
-		"2018-08-09T21:00:00Z": 12.3,
-		"2018-08-09T22:00:00Z": 12.3,
-		"2018-08-09T23:00:00Z": 12.3,
+func parseStringToTime(s string) time.Time {
+	layout := "2006-01-02T15:04:05Z"
+	res, err := time.Parse(layout, s)
+	if err != nil {
+		fmt.Println(err)
 	}
-	return m
+	return res
+}
+
+func addvalues(t timeseries_grpc.Timeseries) timeseries_grpc.Timeseries {
+	for i := 0; i < 24; i++ {
+		str := fmt.Sprintf("2018-08-09T%02d:00:00Z", i)
+
+		parsedTime, err := ptypes.TimestampProto(parseStringToTime(str))
+		if err != nil {
+			fmt.Println(err)
+		}
+		t.Values = append(t.Values, &timeseries_grpc.Value{
+			Hour:  parsedTime,
+			Value: 23.2,
+		})
+	}
+
+	return t
 
 }
 

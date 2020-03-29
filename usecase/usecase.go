@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -36,12 +37,29 @@ func (t *timeseriesUsecase) Store(ts *models.TimeSeries) error {
 	return nil
 }
 
-func (t *timeseriesUsecase) GetAllTimeseriesFromTimeToTime(from time.Time, to time.Time) ([]models.TimeSeries, error) {
+func (t *timeseriesUsecase) GetAllTimeseriesFromTimeToTime(from time.Time, to time.Time) (returnedTs []models.TimeSeries, err error) {
 
-	tss, err := t.timeseriesRepo.GetAllTimeseriesFromTimeToTime(from, to)
+	tss, err := t.timeseriesRepo.GetAllDataFromTimeToTime(from, to)
 	if err != nil {
 		return nil, err
 	}
+	for i := 0; i < len(tss); i++ {
+		ts := tss[i]
+		tsWithValues, err := t.timeseriesRepo.GetValuesByTimeseries(&ts)
+		if err != nil {
+			fmt.Println(err)
+		}
+		tss[i] = *tsWithValues
+	}
 
 	return tss, nil
+}
+
+func ParseStringToTime(timeString string) time.Time {
+	layout := "2006-01-02T15:04:05Z"
+	t, err := time.Parse(layout, timeString)
+	if err != nil {
+		fmt.Println(err)
+	}
+	return t
 }
