@@ -113,7 +113,7 @@ func (s *server) Store(ctx context.Context, t *timeseries_grpc.Timeseries) (*tim
 	return t, nil
 }
 
-func (s *server) GetAllFromTimeToTime(ctx context.Context, r *timeseries_grpc.GetAllFromTimeToTimeRequest) (*timeseries_grpc.GetAllFromTimeToTimeResponse, error) {
+func (s *server) GetAllFromTimeToTime(ctx context.Context, r *timeseries_grpc.GetRequest) (*timeseries_grpc.GetAllFromTimeToTimeResponse, error) {
 
 	toParsed, err := ptypes.Timestamp(r.To)
 	if err != nil {
@@ -140,5 +140,33 @@ func (s *server) GetAllFromTimeToTime(ctx context.Context, r *timeseries_grpc.Ge
 	response := &timeseries_grpc.GetAllFromTimeToTimeResponse{
 		TimeseriesList: res,
 	}
+	return response, nil
+}
+
+func (s *server) GetTotalUsageForCustomerInTimePeriod(ctx context.Context, r *timeseries_grpc.GetRequest) (*timeseries_grpc.SumResponse, error) {
+	toParsed, err := ptypes.Timestamp(r.To)
+	if err != nil {
+		fmt.Println(err)
+		return nil, nil
+	}
+	fromParsed, err := ptypes.Timestamp(r.From)
+	if err != nil {
+		fmt.Println(err)
+		return nil, nil
+	}
+
+	sum, err := s.usecase.GetTotalUsageForCustomerInTimePeriod(fromParsed, toParsed, r.GetCustomerId())
+	if err != nil {
+		log.Println(err.Error())
+		return nil, err
+	}
+
+	response := &timeseries_grpc.SumResponse{
+		From:       r.From,
+		To:         r.To,
+		CustomerId: r.GetCustomerId(),
+		Sum:        sum,
+	}
+
 	return response, nil
 }

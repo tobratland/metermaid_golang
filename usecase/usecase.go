@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,6 +13,7 @@ import (
 type TimeseriesUsecase interface {
 	Store(*models.TimeSeries) error
 	GetAllTimeseriesFromTimeToTime(from time.Time, to time.Time) ([]models.TimeSeries, error)
+	GetTotalUsageForCustomerInTimePeriod(from time.Time, to time.Time, customerId string) (float64, error)
 }
 
 type timeseriesUsecase struct {
@@ -62,4 +64,14 @@ func ParseStringToTime(timeString string) time.Time {
 		fmt.Println(err)
 	}
 	return t
+}
+
+func (t *timeseriesUsecase) GetTotalUsageForCustomerInTimePeriod(from time.Time, to time.Time, customerId string) (float64, error) {
+	sum, err := t.timeseriesRepo.GetSumFromTimeToTimeByCustomerId(from, to, customerId)
+	if err != nil {
+		log.Fatal(err)
+		return 0, err
+	}
+
+	return sum, nil
 }

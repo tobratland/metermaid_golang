@@ -23,7 +23,7 @@ func (p *postgresTimeseriesRepository) StoreData(t *models.TimeSeries) error {
 	txn, err := p.Conn.Begin()
 	if err != nil {
 		log.Fatal(err)
-		fmt.Println("conn.begin @ storedata")
+		return err
 	}
 
 	statement := "INSERT INTO meterdata (id, meterid, userid, resolution, fromtime, totime) VALUES ($1, $2, $3, $4, $5, $6) returning id"
@@ -37,6 +37,7 @@ func (p *postgresTimeseriesRepository) StoreData(t *models.TimeSeries) error {
 	err = txn.Commit()
 	if err != nil {
 		log.Fatal(err)
+		return err
 	}
 	fmt.Println("successfully stored data")
 	return nil
@@ -86,6 +87,7 @@ func (p *postgresTimeseriesRepository) GetAllDataFromTimeToTime(from time.Time, 
 	rows, err := txn.Query(statement, from, to)
 	if err != nil {
 		log.Fatal(err)
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -94,6 +96,7 @@ func (p *postgresTimeseriesRepository) GetAllDataFromTimeToTime(from time.Time, 
 
 		if err := rows.Scan(&tempTs.Id, &tempTs.MeterId, &tempTs.CustomerId, &tempTs.Resolution, &tempTs.From, &tempTs.To); err != nil {
 			log.Fatal(err)
+			return nil, err
 		}
 		timeseries = append(timeseries, tempTs)
 	}
@@ -120,6 +123,33 @@ func (p *postgresTimeseriesRepository) GetValuesByTimeseries(t *models.TimeSerie
 	t.Values = m
 
 	return t, nil
+}
+
+func (p *postgresTimeseriesRepository) GetSumFromTimeToTimeByCustomerId(from time.Time, to time.Time, customerId string) (float64, error) {
+	txn, err := p.Conn.Begin()
+	if err != nil {
+		log.Fatal(err)
+		return 0, err
+	}
+
+	statement := "SELECT SUM(value) FROM metervalues WHERE hour >=$1 AND hour <= $2 AND userid = $3"
+	rows, err := txn.Query(statement, from, to, customerId)
+	if err != nil {
+		log.Fatal(err)
+		return 0, err
+	}
+	defer rows.Close()
+
+	var tempsum, sum float64
+
+	for rows.Next() {
+		if err := rows.Scan(&tempsum); err != nil {
+			log.Fatal(err)
+			return 0, err
+		}
+		sum += tempsum
+	}
+	return sum, nil
 }
 
 /*
