@@ -25,8 +25,34 @@ func main() {
 	client := timeseries_grpc.NewTimeseriesHandlerClient(conn)
 	//store(client)
 	//getdata(client)
-	getSumCustomerId(client)
+	//getSumCustomerId(client)
+	getSumForMeterid(client)
 
+}
+func getSumForMeterid(c timeseries_grpc.TimeseriesHandlerClient) {
+	from, err := ptypes.TimestampProto(parseStringToTime("2018-08-05T00:00:00Z"))
+	if err != nil {
+		fmt.Println(err)
+	}
+	to, err := ptypes.TimestampProto(parseStringToTime("2018-08-20T23:00:00Z"))
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	meterID := "test123"
+
+	request := &timeseries_grpc.GetRequest{
+		From:    from,
+		To:      to,
+		MeterId: meterID,
+	}
+
+	resp, err := c.GetTotalUsageForMeterInTimePeriod(context.Background(), request)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println("sum for period ", resp.GetFrom(), " to period ", resp.GetTo(), "for customer: ", resp.GetCustomerId(), " is: ", resp.GetSum())
 }
 
 func getSumCustomerId(c timeseries_grpc.TimeseriesHandlerClient) {

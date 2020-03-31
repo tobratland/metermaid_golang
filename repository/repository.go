@@ -12,5 +12,6 @@ type TimeSeriesRepository interface {
 	StoreData(t *models.TimeSeries) error
 	GetAllDataFromTimeToTime(from time.Time, to time.Time) ([]models.TimeSeries, error)
 	GetSumFromTimeToTimeByCustomerId(from time.Time, to time.Time, customerId string) (float64, error)
+	GetSumFromTimeToTimeByMeterId(from time.Time, to time.Time, meterId string) (float64, error)
 	GetValuesByTimeseries(t *models.TimeSeries) (*models.TimeSeries, error)
 }

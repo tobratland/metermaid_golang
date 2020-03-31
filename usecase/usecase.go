@@ -14,6 +14,7 @@ type TimeseriesUsecase interface {
 	Store(*models.TimeSeries) error
 	GetAllTimeseriesFromTimeToTime(from time.Time, to time.Time) ([]models.TimeSeries, error)
 	GetTotalUsageForCustomerInTimePeriod(from time.Time, to time.Time, customerId string) (float64, error)
+	GetTotalUsageForMeterInTimePeriod(from time.Time, to time.Time, meterId string) (float64, error)
 }
 
 type timeseriesUsecase struct {
@@ -68,6 +69,16 @@ func ParseStringToTime(timeString string) time.Time {
 
 func (t *timeseriesUsecase) GetTotalUsageForCustomerInTimePeriod(from time.Time, to time.Time, customerId string) (float64, error) {
 	sum, err := t.timeseriesRepo.GetSumFromTimeToTimeByCustomerId(from, to, customerId)
+	if err != nil {
+		log.Fatal(err)
+		return 0, err
+	}
+
+	return sum, nil
+}
+
+func (t *timeseriesUsecase) GetTotalUsageForMeterInTimePeriod(from time.Time, to time.Time, meterId string) (float64, error) {
+	sum, err := t.timeseriesRepo.GetSumFromTimeToTimeByMeterId(from, to, meterId)
 	if err != nil {
 		log.Fatal(err)
 		return 0, err

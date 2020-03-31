@@ -46,7 +46,5 @@ service timeseriesHandler {
     rpc Store(Timeseries) returns (Timeseries) {}
     rpc GetAllFromTimeToTime(GetRequest) returns (GetAllFromTimeToTimeResponse){}
     rpc GetTotalUsageForCustomerInTimePeriod(GetRequest) returns (SumResponse){}
-    //TODO get total usage for customer for a period of time
-    //TODO get total usage for meter for a period of time
-    
+    rpc GetTotalUsageForMeterInTimePeriod(GetRequest) returns (SumResponse) {}
 }

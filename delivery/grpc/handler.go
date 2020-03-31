@@ -170,3 +170,30 @@ func (s *server) GetTotalUsageForCustomerInTimePeriod(ctx context.Context, r *ti
 
 	return response, nil
 }
+func (s *server) GetTotalUsageForMeterInTimePeriod(ctx context.Context, r *timeseries_grpc.GetRequest) (*timeseries_grpc.SumResponse, error) {
+	toParsed, err := ptypes.Timestamp(r.To)
+	if err != nil {
+		fmt.Println(err)
+		return nil, nil
+	}
+	fromParsed, err := ptypes.Timestamp(r.From)
+	if err != nil {
+		fmt.Println(err)
+		return nil, nil
+	}
+
+	sum, err := s.usecase.GetTotalUsageForMeterInTimePeriod(fromParsed, toParsed, r.GetMeterId())
+	if err != nil {
+		log.Println(err.Error())
+		return nil, err
+	}
+
+	response := &timeseries_grpc.SumResponse{
+		From:    r.From,
+		To:      r.To,
+		MeterId: r.GetMeterId(),
+		Sum:     sum,
+	}
+
+	return response, nil
+}

@@ -152,6 +152,33 @@ func (p *postgresTimeseriesRepository) GetSumFromTimeToTimeByCustomerId(from tim
 	return sum, nil
 }
 
+func (p *postgresTimeseriesRepository) GetSumFromTimeToTimeByMeterId(from time.Time, to time.Time, meterId string) (float64, error) {
+	txn, err := p.Conn.Begin()
+	if err != nil {
+		log.Fatal(err)
+		return 0, err
+	}
+
+	statement := "SELECT SUM(value) FROM metervalues WHERE hour >=$1 AND hour <= $2 AND meterid = $3"
+	rows, err := txn.Query(statement, from, to, meterId)
+	if err != nil {
+		log.Fatal(err)
+		return 0, err
+	}
+	defer rows.Close()
+
+	var tempsum, sum float64
+
+	for rows.Next() {
+		if err := rows.Scan(&tempsum); err != nil {
+			log.Fatal(err)
+			return 0, err
+		}
+		sum += tempsum
+	}
+	return sum, nil
+}
+
 /*
 var u1, u2, u3, u4 string
 
